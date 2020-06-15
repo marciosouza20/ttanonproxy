@@ -1,0 +1,4 @@
+#!/bin/bash
+# This is a daemon that running service tor and configure iptables rules for working of
+# ttanonproxy
+#
