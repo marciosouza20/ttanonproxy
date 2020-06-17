@@ -1,5 +1,5 @@
-#!/bin/bash
 # Firewall rules used by ttanonproxy to create a transparent proxy to TOR
+#!/bin/bash
 #
 # This rules was inspired in https://trac.torproject.org/projects/tor/wiki/doc/TransparentProxy
 #
