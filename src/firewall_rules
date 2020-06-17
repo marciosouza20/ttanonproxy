@@ -1,0 +1,61 @@
+#!/bin/bash
+# Firewall rules used by ttanonproxy to create a transparent proxy to TOR
+#
+# This rules was inspired in https://trac.torproject.org/projects/tor/wiki/doc/TransparentProxy
+#
+# v0.0 - The basic implementation of firewall rules
+#
+#
+# Author: Marcio de Souza Oliveira <marciosouza@debian.org>
+
+set -e
+
+# Global variables
+I=$(which iptables)
+I6=$(which ip6tables)
+TOR_UID=$(id -u debian-tor)
+BACKUP_RULES_DIR="/var/tmp/ttanonproxy"
+IPTABLES_TABLES="$(iptables-save | sed -E -n 's/^\*//p')"
+LOOPBACK_INTERFACE="lo"
+LOOPBACK_NETWORK="127.0.0.0/8"
+
+# Outputs colors
+RED_COLOR=""
+GREEN_COLOR=""
+
+/usr/sbin/iptables -t nat -A OUTPUT -p tcp --syn -j REDIRECT --to-ports 9040
+
+backup_rules () {
+  # Backup the current firewall rules
+  # TODO: Implement the check of previous firewall rules
+  #       May be change output file name and directory
+  [ -e "$BACKUP_RULES_DIR" ] || echo -e "[!] Backup rules DIR not exist:\t"$BACKUP_RULES_DIR"" && exit 1
+  if iptables-save > "$BACKUP_RULES_DIR"/rules.v4 && ip6tables-save > "$BACKUP_RULES_DIR"/rules.v6; then
+    echo -e "[*] Saving the current firewall rules\tOK"
+    return 0
+  else
+    echo -e "[!] Saving the current firewall rules\tERROR"
+    return 1
+  fi
+}
+
+#change_firewall_policy () {
+  # Set firewall default policy of all tables to DROP IPV4 and IPV6
+#}
+
+clear_current_rules () {
+  # Clear current rules in all tables
+  if for table in $IPTABLES_TABLES; do
+    "$I" -F -t "$table"
+    "$I6" -F -t "$table"
+  done
+  then
+    return 0
+  else
+    return 1
+  fi
+}
+
+#restore_rules () {
+  # Restore backuped rules
+#}

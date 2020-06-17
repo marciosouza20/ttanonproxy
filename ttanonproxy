@@ -1,4 +1,21 @@
 #!/bin/bash
-# This is a daemon that running service tor and configure iptables rules for working of
-# ttanonproxy
 #
+# ttanonproxy
+# - This is a daemon that running service tor and configure firewall rules to implement
+#   a transparent Proxy to TOR;
+# - ttanonproxy implement a transparent proxy and avoid any traffic leakage to Internet
+#
+# v.0.0 - The basic implementation of ttanonproxy
+
+set -e
+
+# Global variables
+OS_FAMILY="debian-like"
+
+check_osfamily () {
+# Verify if system running a Debian-like system or RedHat like System
+}
+
+check_uid () {
+# Verify if script was running like root
+}
