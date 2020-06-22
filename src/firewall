@@ -16,12 +16,15 @@ I6=$(which ip6tables)
 TOR_UID=$(id -u debian-tor)
 BACKUP_RULES_DIR="/var/tmp/ttanonproxy"
 IPTABLES_TABLES="$(iptables-save | sed -E -n 's/^\*//p')"
+IPTABLES_CHAINS_FILTER=""
 LOOPBACK_INTERFACE="lo"
 LOOPBACK_NETWORK="127.0.0.0/8"
 
 # Outputs colors
-RED_COLOR=""
-GREEN_COLOR=""
+export BLUE='\033[1;94m'
+export GREEN='\033[1;92m'
+export RED='\033[1;91m'
+export RESETCOLOR='\033[1;00m'
 
 /usr/sbin/iptables -t nat -A OUTPUT -p tcp --syn -j REDIRECT --to-ports 9040
 
@@ -39,9 +42,29 @@ backup_rules () {
   fi
 }
 
-#change_firewall_policy () {
-  # Set firewall default policy of all tables to DROP IPV4 and IPV6
-#}
+change_firewall_policy () {
+  # Set firewall default policy of all chains to DROP IPV4 and IPV6
+  # Get tables all chains for ALL tables
+  if for table in $IPTABLES_TABLES; do
+    echo "[*] Getting all chains of table: "$table""
+    "$table"_chains="iptables -L -t "$table" | grep Chain | cut -d" " -f2"
+    echo "[*] Setting the policy to DROP of all chains of table: "$table""
+    if for chain in $table_chains; do
+      "$I" -t "$table" "$chain" -P DROP &&  echo -e "\t[*] "$chain": setted as DROP"
+      done
+    then
+      echo -e "[*]\t"$table": all chains setted as DROP"
+    else
+      echo -e "[!]\t"$table": Could not change policy for all chains"
+      return 1
+    fi
+  done
+  then
+    return 0
+  else
+    return 1
+  fi
+}
 
 clear_current_rules () {
   # Clear current rules in all tables
@@ -56,6 +79,7 @@ clear_current_rules () {
   fi
 }
 
-#restore_rules () {
+restore_rules () {
   # Restore backuped rules
-#}
+
+}

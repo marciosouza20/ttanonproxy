@@ -12,6 +12,14 @@ set -e
 # Global variables
 OS_FAMILY="debian-like"
 
+# Outputs colors
+export BLUE='\033[1;94m'
+export GREEN='\033[1;92m'
+export RED='\033[1;91m'
+export RESETCOLOR='\033[1;00m'
+
+
+
 check_osfamily () {
 # Verify if system running a Debian-like system or RedHat like System
 }
