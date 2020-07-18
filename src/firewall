@@ -79,7 +79,6 @@ clear_current_rules () {
   fi
 }
 
-restore_rules () {
+#restore_rules () {
   # Restore backuped rules
-
-}
+#}
