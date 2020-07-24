@@ -30,8 +30,6 @@ export GREEN='\033[1;92m'
 export RED='\033[1;91m'
 export RESETCOLOR='\033[1;00m'
 
-#/usr/sbin/iptables -t nat -A OUTPUT -p tcp --syn -j REDIRECT --to-ports 9040
-
 backup_current_rules () {
   # Backup the current firewall rules
   # TODO: Implement the check of previous firewall rules
