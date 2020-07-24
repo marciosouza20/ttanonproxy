@@ -18,12 +18,38 @@ export GREEN='\033[1;92m'
 export RED='\033[1;91m'
 export RESETCOLOR='\033[1;00m'
 
+# Import the lib
+source src/firewall
 
-
-check_osfamily () {
+#check_osfamily () {
 # Verify if system running a Debian-like system or RedHat like System
+#}
+
+#check_uid () {
+# Verify if script was running like root
+#}
+
+start () {
+  start_firewall
 }
 
-check_uid () {
-# Verify if script was running like root
-}
+if [ "$#" != 0 ]
+then
+		case "$1" in
+			start)
+				start_firewall && exit 0
+				;;
+			stop)
+				echo STOP
+				;;
+			status)
+				echo STATUS
+				;;
+			*)
+				echo USE
+        exit 3
+				;;
+		esac
+else
+	echo "$USE" && exit 2
+fi

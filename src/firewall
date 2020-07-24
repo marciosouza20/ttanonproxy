@@ -1,5 +1,5 @@
-# Firewall rules used by ttanonproxy to create a transparent proxy to TOR
 #!/bin/bash
+# Firewall rules used by ttanonproxy to create a transparent proxy to TOR
 #
 # This rules was inspired in https://trac.torproject.org/projects/tor/wiki/doc/TransparentProxy
 #
@@ -15,10 +15,14 @@ I=$(which iptables)
 I6=$(which ip6tables)
 TOR_UID=$(id -u debian-tor)
 BACKUP_RULES_DIR="/var/tmp/ttanonproxy"
-IPTABLES_TABLES="$(iptables-save | sed -E -n 's/^\*//p')"
-IPTABLES_CHAINS_FILTER=""
+#IPTABLES_TABLES="$(iptables-save | sed -E -n 's/^\*//p')"
+IPTABLES_TABLES="filter"
 LOOPBACK_INTERFACE="lo"
 LOOPBACK_NETWORK="127.0.0.0/8"
+VIRT_ADDRESS_NETWORK="10.192.0.0/10"
+GATEWAY=""
+TRANS_PORT="9040"
+DNS_PORT="53"
 
 # Outputs colors
 export BLUE='\033[1;94m'
@@ -26,13 +30,13 @@ export GREEN='\033[1;92m'
 export RED='\033[1;91m'
 export RESETCOLOR='\033[1;00m'
 
-/usr/sbin/iptables -t nat -A OUTPUT -p tcp --syn -j REDIRECT --to-ports 9040
+#/usr/sbin/iptables -t nat -A OUTPUT -p tcp --syn -j REDIRECT --to-ports 9040
 
-backup_rules () {
+backup_current_rules () {
   # Backup the current firewall rules
   # TODO: Implement the check of previous firewall rules
   #       May be change output file name and directory
-  [ -e "$BACKUP_RULES_DIR" ] || echo -e "[!] Backup rules DIR not exist:\t"$BACKUP_RULES_DIR"" && exit 1
+  [ -e "$BACKUP_RULES_DIR" ] || (echo -e "[!] Backup rules DIR not exist:\t"$BACKUP_RULES_DIR"" && exit 1)
   if iptables-save > "$BACKUP_RULES_DIR"/rules.v4 && ip6tables-save > "$BACKUP_RULES_DIR"/rules.v6; then
     echo -e "[*] Saving the current firewall rules\tOK"
     return 0
@@ -42,29 +46,30 @@ backup_rules () {
   fi
 }
 
-change_firewall_policy () {
+#change_firewall_policy () {
   # Set firewall default policy of all chains to DROP IPV4 and IPV6
   # Get tables all chains for ALL tables
-  if for table in $IPTABLES_TABLES; do
-    echo "[*] Getting all chains of table: "$table""
-    "$table"_chains="iptables -L -t "$table" | grep Chain | cut -d" " -f2"
-    echo "[*] Setting the policy to DROP of all chains of table: "$table""
-    if for chain in $table_chains; do
-      "$I" -t "$table" "$chain" -P DROP &&  echo -e "\t[*] "$chain": setted as DROP"
-      done
-    then
-      echo -e "[*]\t"$table": all chains setted as DROP"
-    else
-      echo -e "[!]\t"$table": Could not change policy for all chains"
-      return 1
-    fi
-  done
-  then
-    return 0
-  else
-    return 1
-  fi
-}
+  # TODO: Only set drop the filter table
+  #if for table in $IPTABLES_TABLES; do
+  #  echo "[*] Getting all chains of table: "$table""
+  #  chains=$(iptables -L -t "$table" | grep Chain | awk '{ print $2 }')
+  #  echo "[*] Setting the policy to DROP of all chains of table: "$table""
+  #  if for chain in $chains; do
+  #    "$I" -t "$table" -P "$chain" DROP &&  echo -e "\t[*] "$chain": setted as DROP"
+  #    done
+  #  then
+  #    echo -e "[*]\t"$table": all chains setted as DROP"
+  #  else
+  #    echo -e "[!]\t"$table": Could not change policy for all chains"
+  #    return 1
+  #  fi
+  #done
+  #then
+  #  return 0
+  #else
+  #  return 1
+  #fi
+#}
 
 clear_current_rules () {
   # Clear current rules in all tables
@@ -73,12 +78,58 @@ clear_current_rules () {
     "$I6" -F -t "$table"
   done
   then
+    echo -e "[*] Clear the current firewall rules\tOK"
     return 0
   else
+    echo -e "[!] Clear the current firewall rules\tERROR"
     return 1
   fi
 }
 
+implement_transparent_proxy () {
+  # Start the transparent proxy rules
+  # FILTER TABLE
+    # INPUT RULES
+    # Permit all traffic for loopback
+    "$I" -A INPUT -i "$LOOPBACK_INTERFACE" -j ACCEPT
+    # Allow answers from initiates connections TCP/UDP/Icmp
+    "$I" -A INPUT -m state --state RELATED,ESTABLISHED -p tcp -j ACCEPT
+    "$I" -A INPUT -m state --state RELATED,ESTABLISHED -p udp -j ACCEPT
+    "$I" -A INPUT -m state --state RELATED,ESTABLISHED -p icmp -j ACCEPT
+    "$I" -A INPUT -m state --state NEW,INVALID -j DROP
+    # OUTPUT RULES
+    # Allow TCP/UDP connections from TOR user
+    # Not is necessary
+    #"$I" -A OUTPUT -p tcp -m state --state NEW,RELATED,ESTABLISHED -m owner --uid-owner "$TOR_UID" -j ACCEPT
+    #"$I" -A OUTPUT -p udp -m state --state NEW,RELATED,ESTABLISHED -m owner --uid-owner "$TOR_UID" -j ACCEPT
+    #"$I" -A OUTPUT -s "$LOOPBACK_NETWORK" -j ACCEPT
+  # NAT TABLE
+    # OUTPUT RULES
+    # Allow access to .onion address was mapping to VIRT_ADDRESS_NETWORK;
+    #"$I" -t nat -A OUTPUT -d "$VIRT_ADDRESS_NETWORK" -p tcp -j REDIRECT --to-ports "$TRANS_PORT"
+    # dns requests to tor
+    # Don't nat the Tor process, the loopback, localnetwork
+    "$I" -t nat -A OUTPUT -m owner --uid-owner "$TOR_UID" -j RETURN
+    # Redirect all TCP/UDP traffic through the tor
+    "$I" -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports "$TRANS_PORT"
+    #"$I" -t nat -A OUTPUT -p udp -j REDIRECT --to-ports "$TRANS_PORT"
+    # Redirect other protocols to loopback to avoid ip leakage
+    # "$I" -t nat -A OUTPUT -j REDIRECT
+}
+
 #restore_rules () {
   # Restore backuped rules
+  # TO DO
 #}
+
+start_firewall () {
+  backup_current_rules
+  clear_current_rules
+  change_firewall_policy
+  implement_transparent_proxy
+}
+
+#stop_firewall () {}
+  # TO DO: Implement it
+#status_firewall () {}
+  # TO DO: Implement it
