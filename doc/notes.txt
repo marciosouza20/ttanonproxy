@@ -1,0 +1,2 @@
+Problem: Firefox don't resolve .onion names when transparent proxy is working
+Solution: Change the Preference network.dns.blockDotOnion to False

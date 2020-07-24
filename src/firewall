@@ -46,31 +46,6 @@ backup_current_rules () {
   fi
 }
 
-#change_firewall_policy () {
-  # Set firewall default policy of all chains to DROP IPV4 and IPV6
-  # Get tables all chains for ALL tables
-  # TODO: Only set drop the filter table
-  #if for table in $IPTABLES_TABLES; do
-  #  echo "[*] Getting all chains of table: "$table""
-  #  chains=$(iptables -L -t "$table" | grep Chain | awk '{ print $2 }')
-  #  echo "[*] Setting the policy to DROP of all chains of table: "$table""
-  #  if for chain in $chains; do
-  #    "$I" -t "$table" -P "$chain" DROP &&  echo -e "\t[*] "$chain": setted as DROP"
-  #    done
-  #  then
-  #    echo -e "[*]\t"$table": all chains setted as DROP"
-  #  else
-  #    echo -e "[!]\t"$table": Could not change policy for all chains"
-  #    return 1
-  #  fi
-  #done
-  #then
-  #  return 0
-  #else
-  #  return 1
-  #fi
-#}
-
 clear_current_rules () {
   # Clear current rules in all tables
   if for table in $IPTABLES_TABLES; do
@@ -104,17 +79,12 @@ implement_transparent_proxy () {
     #"$I" -A OUTPUT -p udp -m state --state NEW,RELATED,ESTABLISHED -m owner --uid-owner "$TOR_UID" -j ACCEPT
     #"$I" -A OUTPUT -s "$LOOPBACK_NETWORK" -j ACCEPT
   # NAT TABLE
-    # OUTPUT RULES
-    # Allow access to .onion address was mapping to VIRT_ADDRESS_NETWORK;
-    #"$I" -t nat -A OUTPUT -d "$VIRT_ADDRESS_NETWORK" -p tcp -j REDIRECT --to-ports "$TRANS_PORT"
-    # dns requests to tor
     # Don't nat the Tor process, the loopback, localnetwork
     "$I" -t nat -A OUTPUT -m owner --uid-owner "$TOR_UID" -j RETURN
     # Redirect all TCP/UDP traffic through the tor
     "$I" -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports "$TRANS_PORT"
-    #"$I" -t nat -A OUTPUT -p udp -j REDIRECT --to-ports "$TRANS_PORT"
     # Redirect other protocols to loopback to avoid ip leakage
-    # "$I" -t nat -A OUTPUT -j REDIRECT
+    "$I" -t nat -A OUTPUT -j REDIRECT
 }
 
 #restore_rules () {
@@ -122,12 +92,6 @@ implement_transparent_proxy () {
   # TO DO
 #}
 
-start_firewall () {
-  backup_current_rules
-  clear_current_rules
-  change_firewall_policy
-  implement_transparent_proxy
-}
 
 #stop_firewall () {}
   # TO DO: Implement it
